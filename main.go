@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"net/http"	
+	"net/http"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -48,6 +48,7 @@ func print_binary(s []byte) {
 }
 
 func main() {
+	// TODO: access this from a config file
 	root = "/home/jared/projects/go/src/github.com/jrods/wr_server"
 	fmt.Println("Server Root: ", root)
 
@@ -70,30 +71,31 @@ func main() {
 		path := root + "/dj"
 
 		indexPage := &Page{}
-		err := indexPage.CreateView(path + "/index.html") 
+		err := indexPage.CreateView(path + "/index.html")
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
 
 		w.Write(indexPage.ServePage())
-	})
+	}).
+	Methods("GET")
 
 	wrs.HandleFunc("/audience", func (w http.ResponseWriter, r *http.Request) {
 		path := root + "/audience"
 
 		indexPage := &Page{}
-		err := indexPage.CreateView(path + "/index.html") 
+		err := indexPage.CreateView(path + "/index.html")
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
 
 		w.Write(indexPage.ServePage())
-	})
+	}).
+	Methods("GET")
 
 	wrs.HandleFunc("/echo", func (w http.ResponseWriter, r *http.Request) {
-
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			return
