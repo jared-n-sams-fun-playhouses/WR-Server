@@ -2,8 +2,7 @@ package main
 
 import (
 	"fmt"
-	"net/http"
-	"io/ioutil"
+	"net/http"	
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -33,58 +32,87 @@ func (s *MiddleRouter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    w.Header().Set("Master", "JRod")    
-    
+    w.Header().Set("Master", "JRod")
+
     s.mux.ServeHTTP(w, r) // Lets Gorilla work
 }
 
 func print_binary(s []byte) {
 	fmt.Printf("Received b:");
-	
+
 	for n := 0;n < len(s);n++ {
 		fmt.Printf("%d,",s[n]);
 	}
-	
+
 	fmt.Printf("\n");
 }
 
 func main() {
-	root = "/home/jared/projects/go/src/github.com/jrods/wr_server/"
+	root = "/home/jared/projects/go/src/github.com/jrods/wr_server"
 	fmt.Println("Server Root: ", root)
 
 	wrs := mux.NewRouter()
 
 	wrs.HandleFunc("/", func (w http.ResponseWriter, r *http.Request) {
-		indexPage, err := ioutil.ReadFile(root + "test.html")
+		indexPage := &Page{}
+
+		err := indexPage.CreateView(root + "/test.html")
 		if err != nil {
 			fmt.Println(err)
-			return 
+			return
 		}
 
-		w.Write(indexPage)
+		w.Write(indexPage.ServePage());
+	}).
+	Methods("GET")
+
+	wrs.HandleFunc("/dj", func (w http.ResponseWriter, r *http.Request) {
+		path := root + "/dj"
+
+		indexPage := &Page{}
+		err := indexPage.CreateView(path + "/index.html") 
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		w.Write(indexPage.ServePage())
+	})
+
+	wrs.HandleFunc("/audience", func (w http.ResponseWriter, r *http.Request) {
+		path := root + "/audience"
+
+		indexPage := &Page{}
+		err := indexPage.CreateView(path + "/index.html") 
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		w.Write(indexPage.ServePage())
 	})
 
 	wrs.HandleFunc("/echo", func (w http.ResponseWriter, r *http.Request) {
-		
+
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			return
 		}
 
 		for {
-			messageType, p, err := conn.ReadMessage()
+			messageType, msg, err := conn.ReadMessage()
 			if err != nil {
 				return
 			}
-			
-			print_binary(p)
-			
-			err = conn.WriteMessage(messageType, p);
+
+			print_binary(msg)
+
+			err = conn.WriteMessage(messageType, msg);
 			if  err != nil {
 				return
 			}
 		}
-		
+
 	})
 
 	wrs.
@@ -94,7 +122,7 @@ func main() {
 
 	http.Handle("/", &MiddleRouter{wrs})
 	err := http.ListenAndServe(":10101", nil)
-	
+
 	if err != nil {
 		panic("Error: " + err.Error())
 	}
