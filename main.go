@@ -6,6 +6,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+	"gopkg.in/ini.v1"
 )
 
 var (
@@ -48,10 +49,25 @@ func print_binary(s []byte) {
 }
 
 func main() {
-	// TODO: access this from a config file
-	root = "/home/jared/projects/go/src/github.com/jrods/wr_server"
-	fmt.Println("Server Root: ", root)
+	/* Config
+	****************************************************************/
+	cfg, err := ini.Load("./etc/cfg.ini")
+	if err != nil {
+		panic("\nConfig: " + err.Error())
+	}
 
+	server := cfg.Section("Server")
+
+	var (
+		ip   = server.Key("ip").String()
+		port = server.Key("port").String()
+		root = server.Key("rootdir").String()
+	)
+
+	fmt.Println("Server Root: " + root)
+
+	/* Routes
+	****************************************************************/
 	wrs := mux.NewRouter()
 
 	wrs.HandleFunc("/", func (w http.ResponseWriter, r *http.Request) {
@@ -117,13 +133,15 @@ func main() {
 
 	})
 
+	/* File Server
+	****************************************************************/
 	wrs.
 	PathPrefix("/").
-	Handler(http.FileServer(http.Dir(root + "/"))).
+	Handler(http.FileServer(http.Dir(root))).
 	Methods("GET")
 
 	http.Handle("/", &MiddleRouter{wrs})
-	err := http.ListenAndServe(":10101", nil)
+	err = http.ListenAndServe(ip + ":" + port, nil)
 
 	if err != nil {
 		panic("Error: " + err.Error())

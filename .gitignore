@@ -1,3 +1,6 @@
 wr_server.sublime-*
 audience
 dj
+
+etc/cfg.ini
+wr_server

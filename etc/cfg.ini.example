@@ -1,0 +1,4 @@
+[Server]
+ip = 'localhost'
+port = 10101
+rootdir = '/projects/absolute/path'
