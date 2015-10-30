@@ -10,6 +10,8 @@ import (
 )
 
 var (
+	ip string
+	port string
 	root string
 	upgrader = websocket.Upgrader {
 		ReadBufferSize:  1024,
@@ -17,52 +19,20 @@ var (
 	}
 )
 
-type MiddleRouter struct {
-	mux *mux.Router
-}
-
-func (s *MiddleRouter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-    if origin := r.Header.Get("Origin"); origin != "" {
-        w.Header().Set("Access-Control-Allow-Origin", origin)
-        w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
-        w.Header().Set("Access-Control-Allow-Headers",
-            "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
-    }
-    // Stop here if its Preflighted OPTIONS request
-    if r.Method == "OPTIONS" {
-        return
-    }
-
-    w.Header().Set("Master", "JRod")
-
-    s.mux.ServeHTTP(w, r) // Lets Gorilla work
-}
-
-func print_binary(s []byte) {
-	fmt.Printf("Received b:");
-
-	for n := 0;n < len(s);n++ {
-		fmt.Printf("%d,",s[n]);
-	}
-
-	fmt.Printf("\n");
-}
-
 func main() {
 	/* Config
 	****************************************************************/
 	cfg, err := ini.Load("./etc/cfg.ini")
 	if err != nil {
 		panic("\nConfig: " + err.Error())
+		return
 	}
 
 	server := cfg.Section("Server")
 
-	var (
-		ip   = server.Key("ip").String()
-		port = server.Key("port").String()
-		root = server.Key("rootdir").String()
-	)
+	ip   = server.Key("ip").String()
+	port = server.Key("port").String()
+	root = server.Key("rootdir").String()
 
 	fmt.Println("Server Root: " + root)
 
@@ -73,9 +43,9 @@ func main() {
 	wrs.HandleFunc("/", func (w http.ResponseWriter, r *http.Request) {
 		indexPage := &Page{}
 
-		err := indexPage.CreateView(root + "/test.html")
-		if err != nil {
-			fmt.Println(err)
+		if err := indexPage.CreateView(root + "/test.html"); err != nil {
+			fmt.Println("Index: " + err.Error())
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -87,9 +57,10 @@ func main() {
 		path := root + "/dj"
 
 		indexPage := &Page{}
-		err := indexPage.CreateView(path + "/index.html")
-		if err != nil {
-			fmt.Println(err)
+
+		if err := indexPage.CreateView(path + "/index.html"); err != nil {
+			fmt.Println("DJ: " + err.Error())
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -101,9 +72,9 @@ func main() {
 		path := root + "/audience"
 
 		indexPage := &Page{}
-		err := indexPage.CreateView(path + "/index.html")
-		if err != nil {
-			fmt.Println(err)
+		if err := indexPage.CreateView(path + "/index.html"); err != nil {
+			fmt.Println("Audience: " + err.Error())
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -123,7 +94,13 @@ func main() {
 				return
 			}
 
-			print_binary(msg)
+			fmt.Printf("Received b:");
+
+			for n := 0;n < len(msg);n++ {
+				fmt.Printf("%d,",msg[n]);
+			}
+
+			fmt.Printf("\n");
 
 			err = conn.WriteMessage(messageType, msg);
 			if  err != nil {
@@ -135,11 +112,16 @@ func main() {
 
 	/* File Server
 	****************************************************************/
+	// Note: Do not put any HandleFunc, MatcherFunc, etc functions below the file
+	//       server function, it will cause the Handle functions to not work at all,
+	//       could be a bug with Gorilla Mux, but don't really have time to test
 	wrs.
 	PathPrefix("/").
 	Handler(http.FileServer(http.Dir(root))).
 	Methods("GET")
 
+	/* Serve
+	****************************************************************/
 	http.Handle("/", &MiddleRouter{wrs})
 	err = http.ListenAndServe(ip + ":" + port, nil)
 

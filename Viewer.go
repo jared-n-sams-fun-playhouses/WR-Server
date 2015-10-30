@@ -10,9 +10,9 @@ type Page struct {
 	Body []byte
 }
 
-func(p *Page) CreateView(filepath string) error {	
+func(p *Page) CreateView(filepath string) (error) {
 	fileContents, err := ioutil.ReadFile(filepath)
-	
+
 	if err != nil {
 		return err
 	}
@@ -27,6 +27,6 @@ func(p *Page) BuildPage() {
 
 }
 
-func(p Page) ServePage() []byte {
+func(p Page) ServePage() ([]byte) {
 	return p.Body
 }
