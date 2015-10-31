@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	//"unicode/utf8"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -94,7 +95,16 @@ func main() {
 				return
 			}
 
-			fmt.Printf("Received b:");
+			fmt.Printf("\n\n\nReceived b:");
+
+			/*
+			for len(msg) > 0 {
+				r, size := utf8.DecodeRune(msg)
+				fmt.Printf("%c", r)
+
+				msg = msg[size:]
+			}
+			*/
 
 			for n := 0;n < len(msg);n++ {
 				fmt.Printf("%d,",msg[n]);
@@ -107,7 +117,6 @@ func main() {
 				return
 			}
 		}
-
 	})
 
 	/* File Server
