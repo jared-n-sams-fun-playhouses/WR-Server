@@ -27,6 +27,6 @@ func(p *Page) BuildPage() {
 
 }
 
-func(p Page) ServePage() ([]byte) {
+func(p *Page) ServePage() ([]byte) {
 	return p.Body
 }

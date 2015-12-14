@@ -7,13 +7,10 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
-	"gopkg.in/ini.v1"
 )
 
 var (
-	ip string
-	port string
-	root string
+	config WRConfig
 	upgrader = websocket.Upgrader {
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
@@ -23,39 +20,18 @@ var (
 func main() {
 	/* Config
 	****************************************************************/
-	cfg, err := ini.Load("./etc/cfg.ini")
-	if err != nil {
-		panic("\nConfig: " + err.Error())
-		return
+	if err := config.Populate(); err != nil {
+		panic(err)
 	}
 
-	server := cfg.Section("Server")
-
-	ip   = server.Key("ip").String()
-	port = server.Key("port").String()
-	root = server.Key("rootdir").String()
-
-	fmt.Println("Server Root: " + root)
+	fmt.Println("Server Root: " + config.root)
 
 	/* Routes
 	****************************************************************/
 	wrs := mux.NewRouter()
 
-	wrs.HandleFunc("/", func (w http.ResponseWriter, r *http.Request) {
-		indexPage := &Page{}
-
-		if err := indexPage.CreateView(root + "/test.html"); err != nil {
-			fmt.Println("Index: " + err.Error())
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		w.Write(indexPage.ServePage());
-	}).
-	Methods("GET")
-
 	wrs.HandleFunc("/dj", func (w http.ResponseWriter, r *http.Request) {
-		path := root + "/dj"
+		path := config.root + "/dj"
 
 		indexPage := &Page{}
 
@@ -70,7 +46,7 @@ func main() {
 	Methods("GET")
 
 	wrs.HandleFunc("/audience", func (w http.ResponseWriter, r *http.Request) {
-		path := root + "/audience"
+		path := config.root + "/audience"
 
 		indexPage := &Page{}
 		if err := indexPage.CreateView(path + "/index.html"); err != nil {
@@ -112,8 +88,7 @@ func main() {
 
 			fmt.Printf("\n");
 
-			err = conn.WriteMessage(messageType, msg);
-			if  err != nil {
+			if err = conn.WriteMessage(messageType, msg); err != nil {
 				return
 			}
 		}
@@ -126,15 +101,13 @@ func main() {
 	//       could be a bug with Gorilla Mux, but don't really have time to test
 	wrs.
 	PathPrefix("/").
-	Handler(http.FileServer(http.Dir(root))).
+	Handler(http.FileServer(http.Dir(config.root))).
 	Methods("GET")
 
 	/* Serve
 	****************************************************************/
 	http.Handle("/", &MiddleRouter{wrs})
-	err = http.ListenAndServe(ip + ":" + port, nil)
-
-	if err != nil {
-		panic("Error: " + err.Error())
+	if err := http.ListenAndServe(config.ip + ":" + config.port, nil); err != nil {
+		panic(err)
 	}
 }
